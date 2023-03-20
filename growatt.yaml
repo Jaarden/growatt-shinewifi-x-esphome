@@ -1,0 +1,214 @@
+ 
+esphome:
+  name: "grotwatt"
+  platform: ESP8266
+  board: esp07s
+
+
+
+# Enable logging
+logger:
+  baud_rate: 0
+  
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret growatt_api
+
+ota:
+  password: !secret growatt_ota
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: on
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret growatt_fallback_ssid
+    password: !secret growatt_fallback_password
+    
+  # Enable Web server
+web_server:
+  port: 80
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+output:
+# Blue Led
+  - id: light_bl
+    platform: gpio
+    pin: 16
+# Green Led
+  - id: light_gr
+    platform: gpio
+    pin: 0
+# Red Led
+  - id: light_rd
+    platform: gpio
+    pin: 2
+
+uart:
+  id: mod_bus
+  tx_pin: 1
+  rx_pin: 3
+  baud_rate: 115200
+  
+modbus:
+  id: modbus1
+  uart_id: mod_bus
+  
+modbus_controller:
+  - id: growatt
+    ## the Modbus device addr
+    address: 0x1
+    modbus_id: modbus1
+    setup_priority: -10
+  
+globals:
+  - id: gstatus
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+sensor:
+  - platform: modbus_controller
+    name: "Growatt Status"
+    address: 0
+    register_type: "read"
+    accuracy_decimals: 0
+    id: status
+    filters:
+    - lambda: |-
+        id(gstatus)=x;
+        return x;
+
+  - platform: modbus_controller
+    name: "Growatt DcPower"
+    address: 5
+    register_type: "read"
+    unit_of_measurement: W
+    device_class: power
+    icon: mdi:flash
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+    
+  - platform: modbus_controller
+    name: "Growatt DcVoltage"
+    address: 3
+    register_type: "read"
+    unit_of_measurement: V
+    device_class: voltage
+    icon: mdi:flash
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+    
+  - platform: modbus_controller
+    name: "Growatt DcInputCurrent"
+    address: 4
+    register_type: "read"
+    unit_of_measurement: A
+    device_class: current
+    icon: mdi:flash
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+    
+  - platform: modbus_controller
+    name: "Growatt AcFrequency"
+    address: 37
+    register_type: "read"
+    unit_of_measurement: Hz
+    icon: mdi:flash
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.01
+  
+  - platform: modbus_controller
+    name: "Growatt AcVoltage"
+    address: 38
+    register_type: "read"
+    unit_of_measurement: V
+    device_class: voltage
+    icon: mdi:flash
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+  
+  - platform: modbus_controller
+    name: "Growatt AcOutputCurrent"
+    address: 39
+    register_type: "read"
+    unit_of_measurement: A
+    device_class: current
+    icon: mdi:flash
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+    
+  - platform: modbus_controller
+    name: "Growatt AcPower"
+    address: 40
+    register_type: "read"
+    unit_of_measurement: W
+    device_class: power
+    icon: mdi:flash
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+    
+  - platform: modbus_controller
+    name: "Growatt EnergyToday"
+    address: 53
+    register_type: "read"
+    unit_of_measurement: kWh
+    state_class: total_increasing
+    device_class: energy
+    icon: mdi:flash
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+    - lambda: |-
+        if (id(gstatus)!=1) return 0;
+        else return x;
+    - multiply: 0.1
+
+  - platform: modbus_controller
+    name: "Growatt EnergyTotal"
+    address: 55
+    register_type: "read"
+    unit_of_measurement: kWh
+    state_class: total_increasing
+    device_class: energy
+    icon: mdi:flash
+    value_type: U_DWORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+
+    
+  - platform: modbus_controller
+    name: "Growatt Temperature"
+    address: 3093
+    register_type: "read"
+    unit_of_measurement: C
+    device_class: temperature
+    icon: mdi:thermometer
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+    - multiply: 0.1
+
